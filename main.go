@@ -13,22 +13,31 @@ import (
 )
 
 var wg sync.WaitGroup
-var gray image.Gray
-var ptr *image.Gray = &gray
+
 var img image.Image
 
 func main() {
-	fmt.Println("GOMAXPROCS", runtime.GOMAXPROCS(0))
+	fmt.Println("GOMAXPROCS", runtime.GOMAXPROCS(8))
 
 	start := time.Now()
 
-	img, _ = loadImage("The_Sun_in_high_resolution.jpg")
+	loadImage("The_Sun_in_high_resolution.jpg")
 
-	wg.Add(2)
-	go rgbaToGray(img)
-	go rgbaToGray(img)
-	wg.Wait()
-	createGrayImage()
+	// wg.Add(1)
+	// var bounds = img.Bounds()
+	// var gray = image.NewGray(bounds)
+	// go rgbaToGray(img, gray)
+	// wg.Wait()
+
+	// wg.Add(1)
+	// go createGrayImage(gray)
+	// wg.Wait()
+
+	var bounds = img.Bounds()
+	var gray = image.NewGray(bounds)
+	rgbaToGray(img, gray)
+
+	createGrayImage(gray)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
@@ -36,36 +45,43 @@ func main() {
 	fmt.Printf("Processed image in: %s", elapsed)
 }
 
-func loadImage(filepath string) (image.Image, error) {
+func loadImage(filepath string) {
 	file, err := os.Open(filepath)
 	if err != nil {
-		return nil, err
+		panic("Error opening image.")
 	}
 	defer file.Close()
-	img, _, err := image.Decode(file)
+	img, _, err = image.Decode(file)
 	if err != nil {
-		return nil, err
+		panic("Error decoding image.")
 	}
-	return img, nil
 }
 
-func rgbaToGray(img image.Image) {
-	defer wg.Done()
-	var (
-		bounds = img.Bounds()
-		gray2  = image.NewGray(bounds)
-	)
-	for x := 0; x < bounds.Max.X; x++ {
-		for y := 0; y < bounds.Max.Y; y++ {
-			var rgba = img.At(x, y)
-			gray2.Set(x, y, rgba)
+func rgbaToGray(img image.Image, gray *image.Gray) {
+	// defer wg.Done()
+
+	bounds := img.Bounds()
+	nbLines := 1 //bounds.Max.Y / 1
+
+	// process each line in image individually
+	for y := 0; y < bounds.Max.Y; y += nbLines {
+		// fmt.Println(y)
+		go lineToGray(img, gray, bounds.Max.X, y, nbLines)
+	}
+}
+
+func lineToGray(img image.Image, gray *image.Gray, width int, y int, nbLines int) {
+	for x := 0; x < width; x++ {
+		for n := 0; n < nbLines; n++ {
+			var rgba = img.At(x, y+n)
+			gray.Set(x, y+n, rgba)
 		}
 	}
-	gray = *gray2
 }
 
-func createGrayImage() {
+func createGrayImage(gray *image.Gray) {
+	// defer wg.Done()
 	f, _ := os.Create("gray.png")
 	defer f.Close()
-	png.Encode(f, &gray)
+	png.Encode(f, gray)
 }
