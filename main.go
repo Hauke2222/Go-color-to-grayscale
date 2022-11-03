@@ -7,36 +7,17 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"os"
-	"runtime"
-	"sync"
 	"time"
 )
 
-var wg sync.WaitGroup
-
-var img image.Image
-
 func main() {
-	fmt.Println("GOMAXPROCS", runtime.GOMAXPROCS(8))
-
 	start := time.Now()
 
-	loadImage("The_Sun_in_high_resolution.jpg")
-
-	// wg.Add(1)
-	// var bounds = img.Bounds()
-	// var gray = image.NewGray(bounds)
-	// go rgbaToGray(img, gray)
-	// wg.Wait()
-
-	// wg.Add(1)
-	// go createGrayImage(gray)
-	// wg.Wait()
-
+	var img, _ = loadImage("The_Sun_in_high_resolution.jpg")
 	var bounds = img.Bounds()
 	var gray = image.NewGray(bounds)
-	rgbaToGray(img, gray)
 
+	rgbaToGray(img, gray)
 	createGrayImage(gray)
 
 	t := time.Now()
@@ -45,27 +26,23 @@ func main() {
 	fmt.Printf("Processed image in: %s", elapsed)
 }
 
-func loadImage(filepath string) {
+func loadImage(filepath string) (image.Image, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
-		panic("Error opening image.")
+		return nil, err
 	}
 	defer file.Close()
-	img, _, err = image.Decode(file)
+	img, _, err := image.Decode(file)
 	if err != nil {
-		panic("Error decoding image.")
+		return nil, err
 	}
+	return img, nil
 }
 
 func rgbaToGray(img image.Image, gray *image.Gray) {
-	// defer wg.Done()
-
 	bounds := img.Bounds()
-	nbLines := 1 //bounds.Max.Y / 1
-
-	// process each line in image individually
+	nbLines := 1
 	for y := 0; y < bounds.Max.Y; y += nbLines {
-		// fmt.Println(y)
 		go lineToGray(img, gray, bounds.Max.X, y, nbLines)
 	}
 }
@@ -80,7 +57,6 @@ func lineToGray(img image.Image, gray *image.Gray, width int, y int, nbLines int
 }
 
 func createGrayImage(gray *image.Gray) {
-	// defer wg.Done()
 	f, _ := os.Create("gray.png")
 	defer f.Close()
 	png.Encode(f, gray)
