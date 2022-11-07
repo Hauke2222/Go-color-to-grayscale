@@ -17,7 +17,7 @@ func main() {
 	var bounds = img.Bounds()
 	var gray = image.NewGray(bounds)
 
-	rgbaToGray(img, gray)
+	go rgbaToGray(img, gray)
 	createGrayImage(gray)
 
 	t := time.Now()
